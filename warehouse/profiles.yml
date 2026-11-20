@@ -1,0 +1,8 @@
+sunledger:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('SUNLEDGER_DB') }}"
+      threads: 4
+    # Production: add a dbt-snowflake target here; the models are unchanged.

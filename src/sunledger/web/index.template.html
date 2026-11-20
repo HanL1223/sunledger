@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunLedger — independent health records for home batteries (demo)</title>
+<style>
+:root{
+  --page:#f5f6f3; --surface:#ffffff; --surface-2:#f9faf8; --ink:#0f1c1b; --ink-2:#4b5a58; --muted:#7d8a88;
+  --line:#e2e7e4; --line-2:#cdd5d2; --brand:#0f5f56; --brand-2:#e7f2ef; --sun:#e8a317;
+  --series-1:#2a78d6; --series-2:#eb6834; --ref:#52514e;
+  --good:#0ca30c; --good-ink:#006300; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --critical-bg:#fdf0ef; --warning-bg:#fff7e6; --good-bg:#ecf7ec; --info-bg:#eef4fc;
+  --radius:12px; --shadow:0 1px 2px rgba(15,28,27,.05),0 4px 16px rgba(15,28,27,.04);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); background:var(--page);
+}
+*{box-sizing:border-box} body{margin:0;font-size:14px;line-height:1.5}
+button{font:inherit;cursor:pointer} a{color:var(--brand)}
+h1,h2,h3,h4{margin:0;line-height:1.25} h1{font-size:26px;letter-spacing:-.01em} h2{font-size:18px} h3{font-size:15px}
+.muted{color:var(--muted)} .ink2{color:var(--ink-2)} .small{font-size:12px} .num{font-variant-numeric:tabular-nums}
+.wrap{max-width:1360px;margin:0 auto;padding:0 32px}
+
+/* top bar */
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top .wrap{display:flex;align-items:center;gap:28px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--ink)}
+.logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.02em}
+nav.tabs{display:flex;gap:4px;flex:1}
+nav.tabs button{border:0;background:none;padding:8px 14px;border-radius:8px;color:var(--ink-2);font-weight:550}
+nav.tabs button:hover{background:var(--surface-2);color:var(--ink)}
+nav.tabs button[aria-selected=true]{background:var(--brand-2);color:var(--brand)}
+nav.tabs .sep{width:1px;background:var(--line);margin:6px 8px}
+.badge-demo{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);padding:5px 10px;border-radius:999px;white-space:nowrap}
+
+main{padding:28px 0 64px}
+.view{display:none} .view.active{display:block}
+.lead{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:20px}
+.lead p{margin:6px 0 0;color:var(--ink-2);max-width:760px}
+.kicker{font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+.card h3{margin-bottom:4px} .card .sub{color:var(--muted);font-size:12px;margin-bottom:14px}
+.grid{display:grid;gap:16px} .g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+.g-main{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.stack>*+*{margin-top:16px}
+
+.btn{border:1px solid var(--line-2);background:var(--surface);color:var(--ink);padding:9px 16px;border-radius:9px;font-weight:600}
+.btn:hover{border-color:var(--ink-2)} .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:#0b4a43} .btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:5px 10px;font-size:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--ink-2)}
+button.chip:hover{border-color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.critical{background:var(--critical-bg);color:#a32626} .pill.warning{background:var(--warning-bg);color:#8a5a00}
+.pill.info{background:var(--info-bg);color:#1c5cab} .pill.good{background:var(--good-bg);color:var(--good-ink)}
+.pill.neutral{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* stepper */
+.stepper{display:flex;gap:8px;margin-bottom:22px}
+.stepper button{flex:1;display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;text-align:left;color:var(--ink-2)}
+.stepper button b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line-2);font-size:12px;color:var(--ink-2)}
+.stepper button[aria-current=step]{border-color:var(--brand);color:var(--ink);box-shadow:0 0 0 3px var(--brand-2)}
+.stepper button[aria-current=step] b,.stepper button.done b{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* consent */
+.oauth{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.oauth-head{background:#16302d;color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px}
+.oauth-head .mark{width:34px;height:34px;border-radius:8px;background:#fff;color:#16302d;display:grid;place-items:center;font-weight:800}
+.oauth-body{padding:18px 20px}
+.scope{display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.toggle-row{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.toggle-row:last-child{border-bottom:0}
+.toggle-row .t{flex:1} .toggle-row .t b{display:block}
+.switch{position:relative;width:42px;height:24px;flex:none;margin-top:2px}
+.switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;background:#c9d1ce;border-radius:999px;transition:.15s}
+.switch span::after{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch input:checked+span{background:var(--brand)} .switch input:checked+span::after{transform:translateX(18px)}
+.switch input:focus-visible+span{outline:2px solid var(--series-1);outline-offset:2px}
+.switch input:disabled+span{opacity:.6}
+.brand-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.brand-opt{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);text-align:left}
+.brand-opt[aria-pressed=true]{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-2)}
+.brand-opt span.k{font-size:11px}
+
+/* score */
+.score{display:flex;gap:22px;align-items:center}
+.ring{position:relative;width:136px;height:136px;flex:none}
+.ring .v{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .v b{font-size:38px;line-height:1;display:block} .ring .v span{font-size:12px;color:var(--muted)}
+.comp{display:grid;grid-template-columns:120px 1fr 64px;gap:8px 10px;align-items:center;font-size:13px;flex:1}
+.meter{height:8px;background:#edf0ee;border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--series-1);border-radius:4px}
+.tile .label{font-size:12px;color:var(--muted)} .tile .value{font-size:26px;font-weight:650;margin:2px 0}
+.tile .note{font-size:12px;color:var(--ink-2)}
+
+/* alerts */
+.alert{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface)}
+.alert.critical{border-left:4px solid var(--critical)} .alert.warning{border-left:4px solid var(--warning)} .alert.info{border-left:4px solid var(--series-1)}
+.alert .body{flex:1} .alert p{margin:4px 0 0;color:var(--ink-2)}
+.icon{width:22px;height:22px;flex:none}
+
+/* charts */
+.chart{position:relative} .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .sw{width:16px;height:0;border-top:2px solid}
+.legend .sw.dash{border-top-style:dashed}
+.legend .sw.area{height:10px;border:0;border-radius:2px}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;padding:7px 9px;border-radius:7px;white-space:nowrap;opacity:0;transition:opacity .08s;z-index:5}
+.tip b{display:block;margin-bottom:2px}
+.hbars{display:grid;grid-template-columns:minmax(120px,190px) 1fr 74px;gap:7px 12px;align-items:center;font-size:13px}
+.hbars .bar{height:14px;background:#edf0ee;border-radius:0 4px 4px 0;position:relative}
+.hbars .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--series-1);border-radius:0 4px 4px 0}
+.hbars .bar.dim i{background:#a8bcd6} .hbars .lbl.me{font-weight:700}
+.hbars .supp{grid-column:2/4;font-size:12px;color:var(--muted);font-style:italic}
+
+/* tables */
+table.data{width:100%;border-collapse:collapse;font-size:13px}
+table.data th{text-align:left;font-weight:600;color:var(--ink-2);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line-2);background:var(--surface-2);position:sticky;top:0}
+table.data td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.data tbody tr{cursor:pointer} table.data tbody tr:hover{background:#f4f8f7}
+table.data tbody tr[aria-selected=true]{background:var(--brand-2)}
+.scroll{max-height:780px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.minibar{display:inline-block;width:70px;height:6px;background:#edf0ee;border-radius:3px;vertical-align:middle;margin-right:6px;overflow:hidden}
+.minibar i{display:block;height:100%;background:var(--series-1)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.check{display:flex;gap:8px;align-items:center;padding:6px 0}
+
+/* paper (evidence pack) */
+.paper{background:#fff;border:1px solid var(--line);border-radius:6px;box-shadow:0 10px 30px rgba(15,28,27,.08);padding:40px 48px;max-width:880px;margin:0 auto}
+.sl-pack{font:14px/1.55 system-ui,sans-serif;color:#1d2a2a}
+.sl-pack h1{font-size:22px;margin:.2em 0}.sl-pack h2{font-size:15px;margin:1.4em 0 .4em;color:#0f4c45}
+.sl-pack .sl-kicker,.sl-pack .sl-meta,.sl-pack footer{color:#5b6b6a;font-size:12px}
+.sl-pack table{border-collapse:collapse;width:100%;margin:.5em 0}
+.sl-pack th,.sl-pack td{border-bottom:1px solid #dfe6e4;padding:4px 8px;text-align:left;font-size:13px}
+.sl-pack th{background:#f5f8f7}
+.sl-pack footer{margin-top:2em;border-top:1px solid #dfe6e4;padding-top:.6em}
+
+/* how it works */
+.diagram svg{width:100%;height:auto;display:block}
+.diagram text{font-family:inherit}
+.callout{border-left:3px solid var(--brand);background:var(--brand-2);padding:12px 16px;border-radius:0 10px 10px 0;color:var(--ink)}
+.cmp td,.cmp th{text-align:center} .cmp td:first-child,.cmp th:first-child{text-align:left}
+.yes{color:var(--good-ink);font-weight:700} .no{color:var(--muted)} .part{color:#8a5a00}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;opacity:0;transition:.2s;z-index:50}
+.toast.show{opacity:1;transform:translateX(-50%)}
+footer.site{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:12px;background:var(--surface)}
+:focus-visible{outline:2px solid var(--series-1);outline-offset:2px}
+
+@media print{
+  body{background:#fff} .top,footer.site,.no-print,.stepper,.lead{display:none!important}
+  main{padding:0} .view{display:none!important} .view.print-target{display:block!important}
+  .print-target .print-hide{display:none!important}
+  .paper{box-shadow:none;border:0;padding:0;max-width:none}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="logo" aria-label="SunLedger">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><circle cx="15" cy="15" r="14" fill="#0f5f56"/><circle cx="15" cy="13" r="5" fill="#e8a317"/><rect x="7" y="20" width="16" height="2.4" rx="1.2" fill="#fff"/><rect x="9.5" y="24" width="11" height="2" rx="1" fill="#fff" opacity=".7"/></svg>
+      <div>SunLedger<small>Independent battery health records</small></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-view="owner" aria-selected="true">Owner</button>
+      <button role="tab" data-view="installer" aria-selected="false">Installer</button>
+      <button role="tab" data-view="insurer" aria-selected="false">Insurer &amp; lender</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button role="tab" data-view="how" aria-selected="false">How it works</button>
+      <button role="tab" data-view="why" aria-selected="false">Why SunLedger</button>
+    </nav>
+    <span class="badge-demo" id="asof-badge">Synthetic demo data</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- OWNER -->
+  <section class="view active" id="view-owner" aria-label="Owner journey">
+    <div class="lead">
+      <div>
+        <div class="kicker">Owner journey · free</div>
+        <h1 id="owner-title">Is my battery doing what I paid for?</h1>
+        <p id="owner-intro"></p>
+      </div>
+    </div>
+    <div class="stepper" role="list" id="owner-steps">
+      <button role="listitem" data-step="0"><b>1</b>Connect &amp; consent</button>
+      <button role="listitem" data-step="1"><b>2</b>Health dashboard</button>
+      <button role="listitem" data-step="2"><b>3</b>Alert</button>
+      <button role="listitem" data-step="3"><b>4</b>Evidence pack</button>
+    </div>
+    <div id="owner-body"></div>
+  </section>
+
+  <!-- INSTALLER -->
+  <section class="view" id="view-installer" aria-label="Installer fleet">
+    <div class="lead">
+      <div>
+        <div class="kicker">Installer · A$1–3 per site / month (pricing hypothesis)</div>
+        <h1 id="inst-title">Fleet triage</h1>
+        <p>Every shared site across every OEM portal, ranked by what needs a truck first. Owners choose to share with their installer of record.</p>
+      </div>
+      <label class="small ink2">Installer&nbsp;<select id="inst-select" class="btn sm"></select></label>
+    </div>
+    <div id="inst-body"></div>
+  </section>
+
+  <!-- INSURER -->
+  <section class="view" id="view-insurer" aria-label="Insurer and lender">
+    <div class="lead">
+      <div>
+        <div class="kicker">Insurer &amp; green lender · A$20–50 per certificate (pricing hypothesis)</div>
+        <h1>Verify a battery health certificate</h1>
+        <p>Owners share a certificate ID with a named insurer or lender. Anyone holding the ID can check it has not been altered: the ID is derived from a SHA-256 fingerprint of the certificate's contents.</p>
+      </div>
+    </div>
+    <div id="ins-body"></div>
+  </section>
+
+  <!-- HOW -->
+  <section class="view" id="view-how" aria-label="How it works">
+    <div class="lead"><div><div class="kicker">How it works</div><h1>Consented APIs in, trusted records out</h1>
+      <p>Read-only connections to manufacturer APIs and the Energy Consumer Data Right feed one canonical model. SunLedger sells what it derives for the owner, never the raw data.</p></div></div>
+    <div id="how-body"></div>
+  </section>
+
+  <!-- WHY -->
+  <section class="view" id="view-why" aria-label="Why SunLedger">
+    <div class="lead"><div><div class="kicker">Why SunLedger</div><h1>The independent record Australia's battery boom is missing</h1>
+      <p>Half a million batteries in about 16 months, consumer reports more than doubling, and no neutral party holding the evidence.</p></div></div>
+    <div id="why-body"></div>
+  </section>
+</main>
+
+<footer class="site"><div class="wrap" id="footer-text"></div></footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const DATA = /*__SUNLEDGER_DATA__*/null;
+
+/* ---------- utilities ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = (v, d = 1) => v == null ? "–" : (v * 100).toFixed(d) + "%";
+const pts = v => v == null ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(1) + " pts";
+const fmtDate = s => { if (!s) return "–"; const d = new Date(s + "T00:00:00"); return d.toLocaleDateString("en-AU", {day:"numeric", month:"short", year:"numeric"}); };
+const monthLabel = s => new Date(s + "-01T00:00:00").toLocaleDateString("en-AU", {month:"short", year:"numeric"});
+const byId = Object.fromEntries(DATA.sites.map(s => [s.id, s]));
+const catalog = Object.fromEntries(DATA.catalog.map(c => [c.fault_code, c]));
+const installerName = Object.fromEntries(DATA.installers.map(i => [i.installer_id, i.installer_name]));
+const faultsBySite = DATA.faults.reduce((m, f) => ((m[f.site_id] ||= []).push(f), m), {});
+const meterBySite = Object.fromEntries(DATA.meter.map(m => [m.site_id, m]));
+const commBySite = Object.fromEntries(DATA.commissioning.map(c => [c.site_id, c]));
+const fleetBySite = Object.fromEntries(DATA.fleet.map(f => [f.site_id, f]));
+const ACCESS = {owner_oauth: "Owner OAuth", developer_portal: "Developer API", partner_gated: "Partner-gated", cdr: "CDR"};
+const SEV = {critical:{label:"Critical", cls:"critical"}, warning:{label:"Warning", cls:"warning"}, info:{label:"Info", cls:"info"}};
+const ICON = {
+  critical:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#d03b3b"/><rect x="11" y="6" width="2" height="8" rx="1" fill="#fff"/><circle cx="12" cy="17.5" r="1.3" fill="#fff"/></svg>',
+  warning:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 23 21H1z" fill="#fab219"/><rect x="11" y="9" width="2" height="6" rx="1" fill="#0b0b0b"/><circle cx="12" cy="18" r="1.2" fill="#0b0b0b"/></svg>',
+  info:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#2a78d6"/><rect x="11" y="10" width="2" height="8" rx="1" fill="#fff"/><circle cx="12" cy="6.8" r="1.3" fill="#fff"/></svg>',
+  good:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#0ca30c"/><path d="m7 12.5 3.2 3.2L17 9" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>',
+  bad:'<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#d03b3b"/><path d="m8 8 8 8M16 8l-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>',
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2500); }
+function sevPill(sev) { const s = SEV[sev] || SEV.info; return `<span class="pill ${s.cls}">${s.label}</span>`; }
+function gradeColor(score) { return score >= 85 ? "var(--good)" : score >= 70 ? "var(--series-1)" : score >= 55 ? "var(--warning)" : "var(--critical)"; }
+
+/* SHA-256 (FIPS 180-4), dependency-free so verification works offline. */
+function sha256(text) {
+  const bytes = new TextEncoder().encode(text);
+  const K = [], H = []; let n = 2, c = 0;
+  const frac = x => ((x - Math.floor(x)) * 4294967296) | 0;
+  while (c < 64) {
+    let prime = true; for (let i = 2; i * i <= n; i++) if (n % i === 0) { prime = false; break; }
+    if (prime) { if (c < 8) H[c] = frac(Math.pow(n, 1 / 2)); K[c++] = frac(Math.pow(n, 1 / 3)); }
+    n++;
+  }
+  const len = bytes.length, padded = new Uint8Array(((len + 9 + 63) >> 6) << 6);
+  padded.set(bytes); padded[len] = 0x80;
+  const dv = new DataView(padded.buffer);
+  dv.setUint32(padded.length - 4, (len * 8) >>> 0); dv.setUint32(padded.length - 8, Math.floor(len / 536870912));
+  const W = new Int32Array(64), rot = (x, k) => (x >>> k) | (x << (32 - k));
+  for (let off = 0; off < padded.length; off += 64) {
+    for (let i = 0; i < 16; i++) W[i] = dv.getInt32(off + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rot(W[i-15], 7) ^ rot(W[i-15], 18) ^ (W[i-15] >>> 3), s1 = rot(W[i-2], 17) ^ rot(W[i-2], 19) ^ (W[i-2] >>> 10);
+      W[i] = (W[i-16] + s0 + W[i-7] + s1) | 0;
+    }
+    let [a, b, cc, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (h + (rot(e, 6) ^ rot(e, 11) ^ rot(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + W[i]) | 0;
+      const t2 = ((rot(a, 2) ^ rot(a, 13) ^ rot(a, 22)) + ((a & b) ^ (a & cc) ^ (b & cc))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = cc; cc = b; b = a; a = (t1 + t2) | 0;
+    }
+    [a, b, cc, d, e, f, g, h].forEach((v, i) => H[i] = (H[i] + v) | 0);
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+/* Same canonical form as the backend: sorted keys, no whitespace. */
+const canonical = v => Array.isArray(v) ? "[" + v.map(canonical).join(",") + "]"
+  : v && typeof v === "object" ? "{" + Object.keys(v).sort().map(k => JSON.stringify(k) + ":" + canonical(v[k])).join(",") + "}"
+  : JSON.stringify(v);
+const certIdFromHash = h => ("SLC-" + h.slice(0, 24).match(/.{4}/g).join("-")).toUpperCase(); // 96 bits
+
+/* ---------- charts (hand-rolled SVG) ---------- */
+function niceTicks(min, max, count = 5) {
+  const span = max - min || 1, step0 = span / count, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => span / s <= count) || 10 * mag;
+  const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step, out = [];
+  for (let v = lo; v <= hi + step / 2; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+/** Line chart: series [{name, values, color, dash, ref}], labels[], fmt(y), xLabel(i) */
+function lineChart(el, {labels, series, fmt, tickFmt, xLabel, yMin, yMax, gap, height = 260, ticksEvery, width = 760}) {
+  const W = width, H = height, m = {l: 48, r: 92, t: 12, b: 28}, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const all = series.flatMap(s => s.values).filter(v => v != null);
+  const ticks = niceTicks(yMin ?? Math.min(...all), yMax ?? Math.max(...all));
+  const y0 = ticks[0], y1 = ticks[ticks.length - 1];
+  const x = i => m.l + (labels.length < 2 ? iw / 2 : (i / (labels.length - 1)) * iw);
+  const y = v => m.t + ih - ((v - y0) / (y1 - y0)) * ih;
+  const path = vals => { let d = "", pen = false; vals.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); pen = true; }); return d; };
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(s => s.name).join(" vs "))}">`;
+  ticks.forEach(t => svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}" stroke="#e1e0d9" stroke-width="1"/><text x="${m.l - 8}" y="${y(t) + 4}" text-anchor="end" font-size="11" fill="#898781" class="num">${esc((tickFmt || fmt)(t))}</text>`);
+  svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}" stroke="#c3c2b7"/>`;
+  const every = ticksEvery || Math.ceil(labels.length / 8);
+  labels.forEach((l, i) => { if (i % every === 0) svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#898781">${esc(xLabel ? xLabel(i) : l)}</text>`; });
+  if (gap) { // shade where series a falls below b (e.g. capacity under warranty line)
+    const [a, b] = gap.pair.map(n => series[n].values); let seg = [];
+    const flush = () => { if (seg.length > 1) svg += `<path d="M${seg.map(i => x(i) + "," + y(a[i])).join("L")}L${seg.slice().reverse().map(i => x(i) + "," + y(b[i])).join("L")}Z" fill="${gap.color}" opacity=".14"/>`; seg = []; };
+    a.forEach((v, i) => (v != null && b[i] != null && v < b[i]) ? seg.push(i) : flush()); flush();
+  }
+  const ends = [];
+  series.forEach(s => {
+    svg += `<path d="${path(s.values)}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${s.dash ? 'stroke-dasharray="5 4"' : ""}/>`;
+    const li = s.values.map((v, i) => v == null ? -1 : i).filter(i => i >= 0).pop();
+    if (li != null && li >= 0) ends.push({x: x(li) + 8, y: y(s.values[li]) + 4, text: s.short || s.name});
+  });
+  ends.sort((a, b) => a.y - b.y).forEach((e, i, arr) => { if (i && e.y - arr[i - 1].y < 13) e.y = arr[i - 1].y + 13; }); // keep end labels apart
+  ends.forEach(e => svg += `<text x="${e.x}" y="${e.y}" font-size="11" fill="#52514e">${esc(e.text)}</text>`);
+  svg += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="#898781" stroke-width="1" opacity="0"/>`;
+  series.forEach((s, k) => svg += `<circle class="hd hd${k}" r="4" fill="${s.color}" stroke="#fff" stroke-width="2" opacity="0"/>`);
+  svg += `<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" class="hit"/></svg>`;
+  const legend = `<div class="legend">${series.map(s => `<span><i class="sw ${s.dash ? "dash" : ""}" style="border-color:${s.color}"></i>${esc(s.name)}</span>`).join("")}${gap ? `<span><i class="sw area" style="background:${gap.color};opacity:.25"></i>${esc(gap.label)}</span>` : ""}</div>`;
+  el.innerHTML = legend + `<div class="chart">${svg}<div class="tip"></div></div>`;
+  const svgEl = $("svg", el), tip = $(".tip", el), hit = $(".hit", el), xh = $(".xh", el);
+  const move = ev => {
+    const r = svgEl.getBoundingClientRect(), px = (ev.clientX - r.left) * (W / r.width);
+    const i = Math.max(0, Math.min(labels.length - 1, Math.round((px - m.l) / iw * (labels.length - 1))));
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("opacity", 1);
+    series.forEach((s, k) => { const c = $(".hd" + k, el), v = s.values[i]; c.setAttribute("opacity", v == null ? 0 : 1); if (v != null) { c.setAttribute("cx", x(i)); c.setAttribute("cy", y(v)); } });
+    tip.innerHTML = `<b>${esc(labels[i])}</b>` + series.map(s => `${esc(s.name)}: ${s.values[i] == null ? "no data" : esc(fmt(s.values[i]))}`).join("<br>");
+    tip.style.opacity = 1;
+    const left = x(i) / W * r.width; tip.style.left = Math.min(left + 12, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "8px";
+  };
+  hit.addEventListener("mousemove", move);
+  hit.addEventListener("mouseleave", () => { tip.style.opacity = 0; xh.setAttribute("opacity", 0); $$(".hd", el).forEach(c => c.setAttribute("opacity", 0)); });
+}
+/** Horizontal bars: rows [{label, value, me, suppressed, title}] */
+function hbars(rows, {fmt, max}) {
+  const top = max ?? Math.max(...rows.filter(r => r.value != null).map(r => r.value), 0.0001);
+  return `<div class="hbars">${rows.map(r => r.suppressed
+    ? `<div class="lbl">${esc(r.label)}</div><div class="supp">Suppressed: fewer than 5 consented sites</div>`
+    : `<div class="lbl ${r.me ? "me" : ""}">${esc(r.label)}${r.me ? " (you)" : ""}</div><div class="bar ${r.dim ? "dim" : ""}" title="${esc(r.title || "")}"><i style="width:${Math.max(1, (r.value / top) * 100)}%"></i></div><div class="num">${esc(fmt(r.value))}</div>`).join("")}</div>`;
+}
+function weeklySeries(siteId) {
+  const w = DATA.weekly[siteId]; if (!w) return null;
+  const start = new Date(w.start + "T00:00:00");
+  const labels = w.pv.map((_, i) => { const d = new Date(start); d.setDate(d.getDate() + 7 * i); return d.toISOString().slice(0, 10); });
+  return {labels, pv: w.pv, exp: w.exp};
+}
+function generationChart(el, siteId, width) {
+  const w = weeklySeries(siteId); if (!w) { el.innerHTML = '<p class="muted">No generation data.</p>'; return; }
+  lineChart(el, {labels: w.labels.map(l => "Week of " + fmtDate(l)), width, series: [
+    {name: "Expected (weather model)", short: "Expected", values: w.exp, color: "#52514e", dash: true},
+    {name: "Actual generation", short: "Actual", values: w.pv, color: "#2a78d6"}],
+    fmt: v => v.toFixed(1) + " kWh/day", tickFmt: v => v.toFixed(0), xLabel: i => new Date(w.labels[i] + "T00:00:00").toLocaleDateString("en-AU", {month: "short", year: "numeric"}),
+    yMin: 0, ticksEvery: 13});
+}
+function sohChart(el, siteId, height, width) {
+  const rows = DATA.soh[siteId]; if (!rows || rows.length < 2) { el.innerHTML = '<p class="muted">Not enough deep-cycle days to estimate capacity yet.</p>'; return; }
+  const lo = Math.min(...rows.map(r => Math.min(r[1], r[2]))), hi = Math.max(...rows.map(r => Math.max(r[1], r[2])));
+  lineChart(el, {labels: rows.map(r => monthLabel(r[0])), height, width, series: [
+    {name: "Warranty curve (70% at 10 yrs)", short: "Warranty", values: rows.map(r => r[2]), color: "#52514e", dash: true},
+    {name: "Measured capacity (state of health)", short: "Measured", values: rows.map(r => r[1]), color: "#2a78d6"}],
+    gap: {pair: [1, 0], color: "#d03b3b", label: "Below warranty curve"},
+    fmt: v => (v * 100).toFixed(1) + "%", yMin: Math.min(0.85, Math.floor(lo * 50) / 50), yMax: Math.max(1.0, hi), ticksEvery: 3});
+}
+function scoreRing(score, grade) {
+  const r = 58, c = 2 * Math.PI * r, f = Math.max(0, Math.min(100, score)) / 100;
+  return `<div class="ring"><svg viewBox="0 0 136 136" width="136" height="136" aria-hidden="true"><circle cx="68" cy="68" r="${r}" fill="none" stroke="#edf0ee" stroke-width="10"/><circle cx="68" cy="68" r="${r}" fill="none" stroke="${gradeColor(score)}" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c * f} ${c}" transform="rotate(-90 68 68)"/></svg><div class="v"><div><b class="num">${Math.round(score)}</b><span>Grade ${esc(grade)} · of 100</span></div></div></div>`;
+}
+function components(site) {
+  const spec = [["generation", "Solar output", 30], ["capacity", "Battery capacity", 30], ["efficiency", "Efficiency", 15], ["availability", "Data uptime", 15], ["fault", "Open faults", 10]];
+  return `<div class="comp">${spec.map(([k, label, max]) => { const v = site.points[k];
+    return `<div>${label}</div><div class="meter" role="meter" aria-label="${label}" aria-valuenow="${v ?? 0}" aria-valuemax="${max}"><i style="width:${v == null ? 0 : (v / max) * 100}%"></i></div><div class="num small ink2">${v == null ? "n/a" : v.toFixed(0)} / ${max}</div>`; }).join("")}</div>`;
+}
+
+/* ---------- state ---------- */
+const hero = byId[DATA.meta.hero_site];
+const state = {
+  view: "owner", step: 0, connected: false, platform: null,
+  consent: {monitoring: true, installer_share: true, benchmark: false, cdr_meter: true, certificate: false}, // benchmark & certificate opt-in
+  installer: DATA.meta.hero_installer, filter: "all", selected: null,
+};
+
+/* ---------- OWNER ---------- */
+const PURPOSES = [
+  ["monitoring", "Monitoring (required)", "Health score, alerts and evidence packs for you. Read-only: SunLedger can never change your battery's settings.", true],
+  ["installer_share", "Share with my installer", `${installerName[hero.installer]} sees your system's health in their fleet view so they can fix issues before you call.`],
+  ["benchmark", "Contribute to anonymous benchmarks", "Your site is counted, de-identified, in brand and installer comparisons of 5 or more homes. Separate from monitoring; off by default."],
+  ["cdr_meter", "Add smart-meter data (Consumer Data Right)", "Lets SunLedger cross-check what your inverter reports against your retailer's meter."],
+  ["certificate", "Share a health certificate with my insurer", `Issues a verifiable certificate to ${hero.recipient || "a named insurer"} only. You can revoke it at any time.`],
+];
+function renderOwner() {
+  const g = hero.owner.split(" ")[0];
+  $("#owner-intro").textContent = `Meet ${g}: a ${hero.brand} battery (fictional brand) installed in ${hero.suburb} ${hero.state} in ${new Date(hero.installed).toLocaleDateString("en-AU", {month: "long", year: "numeric"})} under the Cheaper Home Batteries Program. Follow her journey from connecting her system to a warranty claim pack.`;
+  $$("#owner-steps button").forEach((b, i) => { b.setAttribute("aria-current", i === state.step ? "step" : "false"); b.classList.toggle("done", i < state.step); b.disabled = i > 0 && !state.connected; });
+  const body = $("#owner-body");
+  [renderConnect, renderDashboard, renderAlert, renderPack][state.step](body);
+}
+function renderConnect(body) {
+  // Any owner-OAuth platform continues the demo, so the hero's platform is never revealed.
+  const srcs = [...DATA.meta.platforms].sort((a, b) => a.name.localeCompare(b.name));
+  const selected = srcs.find(x => x.name === state.platform), name = selected ? selected.name : "Your platform";
+  const gated = !selected || selected.access !== "owner_oauth", review = selected?.access === "developer_portal";
+  body.innerHTML = `<div class="grid g-main">
+    <div class="card"><h3>1. Choose your system</h3><div class="sub">Pick the platform your system reports to. Four offer owner-authorised APIs today; Sungrow and Alpha ESS have official developer APIs that are not owner OAuth; Sigenergy and Fronius need an agreement or contract. Until then SunLedger falls back to smart-meter data via the Consumer Data Right.</div>
+      <div class="brand-list">${srcs.map(x => `<button class="brand-opt" aria-pressed="${x.name === state.platform}" data-platform="${esc(x.name)}"><span><b>${esc(x.name)}</b></span><span class="pill ${x.access === "owner_oauth" ? "good" : "neutral"} k">${ACCESS[x.access]}</span></button>`).join("")}</div>
+      <div class="callout small" style="margin-top:16px"><b>Read-only by design.</b> SunLedger never requests control scopes (for example Tesla's <code>energy_cmds</code>). We do not join a VPP, change tariffs or dispatch your battery. That is why owners who distrust handing over control can still say yes.</div>
+    </div>
+    <div class="oauth" aria-label="Mock authorisation screen">
+      <div class="oauth-head"><div class="mark">${esc(name.slice(0, 1))}</div><div><b>${esc(name)} account</b><div class="small" style="opacity:.8">${!selected ? "Choose a platform" : review ? "Integration not live yet" : gated ? "Partner agreement pending" : "Authorise SunLedger (demo, no real sign-in)"}</div></div></div>
+      <div class="oauth-body">
+        ${!selected ? `<p class="ink2">Pick the platform your system reports to. Any owner-OAuth platform continues this demo.</p>` : gated ? `<p class="ink2">${review ? `${esc(name)} has an official developer API, but SunLedger's integration is not live yet.` : `${esc(name)} does not yet offer a self-serve owner API.`} SunLedger will connect your retailer's smart-meter data via the Consumer Data Right today, and upgrade to full battery data once ${review ? "the integration is live" : "access is agreed"}.</p>` : `
+        <div class="small muted" style="margin-bottom:6px">SunLedger is requesting read-only access to:</div>
+        <div class="scope">${ICON.good}<div>Site details, solar production and grid import/export</div></div>
+        <div class="scope">${ICON.good}<div>Battery telemetry: charge, discharge, state of charge, pack capacity</div></div>
+        <div class="scope">${ICON.bad}<div class="ink2">No permission to change settings, reserve level or operating mode</div></div>`}
+        <h3 style="margin:18px 0 4px">2. Choose what we may do with it</h3>
+        <div class="small muted">Each purpose is a separate consent. Revoke any time; revoking monitoring deletes your data within 30 days.</div>
+        <div>${PURPOSES.map(([k, t, d, req]) => `<div class="toggle-row"><label class="switch"><input type="checkbox" data-consent="${k}" ${state.consent[k] ? "checked" : ""} ${req ? "disabled" : ""} aria-label="${esc(t)}"><span></span></label><div class="t"><b>${esc(t)}</b><span class="small ink2">${esc(d)}</span></div></div>`).join("")}</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px">
+          <button class="btn primary" id="btn-connect" ${gated ? "disabled" : ""}>Authorise &amp; connect</button>
+          <span class="small muted" id="connect-status">${state.connected ? "Connected · history imported" : gated ? "Select an Owner OAuth platform to continue the demo" : ""}</span>
+        </div>
+        <div class="small muted" style="margin-top:10px">Retention: raw API responses 13 months · daily health facts while connected · issued certificates 7 years.</div>
+      </div>
+    </div></div>`;
+  $$(".brand-opt", body).forEach(b => b.onclick = () => { state.platform = b.dataset.platform; renderOwner(); });
+  $$("input[data-consent]", body).forEach(i => i.onchange = () => { state.consent[i.dataset.consent] = i.checked; toast(`${i.checked ? "Granted" : "Revoked"}: ${PURPOSES.find(p => p[0] === i.dataset.consent)[1]}`); });
+  const btn = $("#btn-connect", body);
+  if (btn) btn.onclick = () => {
+    btn.disabled = true; $("#connect-status").textContent = "Exchanging authorisation code… importing history…";
+    setTimeout(() => { state.connected = true; state.step = 1; renderOwner(); toast(`Connected. ${DATA.weekly[hero.id].pv.length} weeks of history imported.`); }, 900);
+  };
+}
+function renderDashboard(body) {
+  const s = hero, faults = faultsBySite[s.id] || [], meter = meterBySite[s.id];
+  const consentNotes = [];
+  if (!state.consent.benchmark) consentNotes.push("Your site is excluded from anonymous benchmarks.");
+  if (!state.consent.installer_share) consentNotes.push(`${installerName[s.installer]} cannot see your system.`);
+  if (!state.consent.cdr_meter) consentNotes.push("Smart-meter cross-check is off.");
+  body.innerHTML = `
+  <div class="grid g-main">
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h3>System health</h3><div class="sub">${esc(s.brand)} ${esc(s.model)} (fictional) · ${esc(s.platform)} · ${s.pv} kWp solar · ${esc(s.suburb)} ${esc(s.state)} · data to ${fmtDate(DATA.meta.as_of)}</div></div>${sevPill(faults.length ? faults[0].severity : "info").replace("Info", "Healthy")}</div>
+      <div class="score">${scoreRing(s.score, s.grade)}${components(s)}</div>
+      <p class="small ink2" style="margin:14px 0 0">The score is the sum of five explainable components. Each is scored against a published threshold, so your installer and manufacturer can check the maths.</p>
+    </div>
+    <div class="card stack"><h3>Needs attention</h3>
+      ${faults.map(f => `<div class="alert ${f.severity}">${ICON[f.severity]}<div class="body"><b>${esc(catalog[f.fault_code].title)}</b> ${sevPill(f.severity)}<p>${esc(catalog[f.fault_code].owner_explanation)}</p></div></div>`).join("") || `<div class="alert info">${ICON.good}<div class="body"><b>All clear</b></div></div>`}
+      <button class="btn primary" id="go-alert">Review the battery alert</button>
+      ${consentNotes.length ? `<p class="small muted">${esc(consentNotes.join(" "))}</p>` : ""}
+    </div>
+  </div>
+  <div class="grid g4" style="margin-top:16px">
+    <div class="card tile"><div class="label">Battery capacity (state of health)</div><div class="value num">${pct(s.soh)}</div><div class="note">Warranty curve at this age: ${pct(s.wsoh)} <span class="pill critical">${pts(s.margin)}</span></div></div>
+    <div class="card tile"><div class="label">Round-trip efficiency (30 days)</div><div class="value num">${pct(s.rte)}</div><div class="note">Typical for this model: about 90%</div></div>
+    <div class="card tile"><div class="label">Solar output vs expected (60 days)</div><div class="value num">${pct(s.perf, 0)}</div><div class="note">Weather-adjusted for postcode ${esc(s.postcode)}</div></div>
+    <div class="card tile"><div class="label">Smart-meter cross-check</div><div class="value num">${meter && state.consent.cdr_meter ? pct(Math.abs(meter.export_diff_pct)) : "Off"}</div><div class="note">${meter && state.consent.cdr_meter ? `Inverter vs meter export over ${meter.days_compared} days` : "Enable CDR meter data to corroborate"}</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3>Battery capacity vs warranty</h3><div class="sub">Monthly median, % of rated usable capacity · ${s.method === "oem_reported" ? "reported by the battery" : "estimated (assumed ±3 pts, unvalidated)"}</div><div id="ch-soh"></div></div>
+    <div class="card"><h3>Solar generation: actual vs expected</h3><div class="sub">kWh per day, weekly average. Expected = array size × postcode irradiance × 0.80 performance ratio</div><div id="ch-gen"></div></div>
+  </div>`;
+  sohChart($("#ch-soh"), s.id); generationChart($("#ch-gen"), s.id);
+  $("#go-alert").onclick = () => { state.step = 2; renderOwner(); };
+}
+function renderAlert(body) {
+  const s = hero, f = (faultsBySite[s.id] || []).find(x => x.fault_code === "CAPACITY_BELOW_WARRANTY") || (faultsBySite[s.id] || [])[0];
+  const lostKwh = s.usable * (s.wsoh - s.soh), meter = meterBySite[s.id], rte = (faultsBySite[s.id] || []).find(x => x.fault_code === "RTE_DEGRADED");
+  const first = DATA.soh[s.id][0];
+  body.innerHTML = `<div class="grid g-main">
+    <div class="card"><div style="display:flex;gap:12px;align-items:flex-start">${ICON.critical}<div><h2>${esc(catalog[f.fault_code].title)}</h2><div class="sub" style="margin:4px 0 0">Detected since ${fmtDate(f.detected_since)} · ${sevPill(f.severity)} · warranty-relevant</div></div></div>
+      <p>${esc(catalog[f.fault_code].owner_explanation)}</p>
+      <div class="grid g3" style="margin:14px 0">
+        <div class="tile"><div class="label">Capacity now</div><div class="value num">${pct(s.soh)}</div><div class="note">${(s.usable * s.soh).toFixed(1)} of ${s.usable} kWh usable</div></div>
+        <div class="tile"><div class="label">Warranty curve allows</div><div class="value num">${pct(s.wsoh)}</div><div class="note">Linear to 70% at 10 years</div></div>
+        <div class="tile"><div class="label">Capacity lost vs warranty</div><div class="value num">${lostKwh.toFixed(2)} kWh</div><div class="note">Less stored solar every evening</div></div>
+      </div>
+      <div id="ch-alert"></div>
+    </div>
+    <div class="card stack"><h3>Why this will stand up</h3>
+      <div class="check">${ICON.good}<div>${s.method === "oem_reported"
+        ? `<b>Reported by the battery itself.</b> <span class="ink2">Capacity is the full-pack energy the battery reports through its OEM cloud API, read daily since ${fmtDate(s.connected)}.</span>`
+        : `<b>Estimated, consistently.</b> <span class="ink2">This battery does not report capacity, so it is estimated from charge and discharge data (assumed ±3 pts, unvalidated).</span>`}</div></div>
+      <div class="check">${ICON.good}<div><b>A trend, not a blip.</b> <span class="ink2">${DATA.soh[s.id].length} monthly medians; fading at ${Math.abs(s.fade * 100).toFixed(1)}% a year against 3% allowed.</span></div></div>
+      ${meter ? `<div class="check">${ICON.good}<div><b>Independently corroborated.</b> <span class="ink2">Grid export matches the retailer's smart meter (CDR) within ${pct(Math.abs(meter.export_diff_pct))} over ${meter.days_compared} days.</span></div></div>` : ""}
+      ${rte ? `<div class="check">${ICON.warning}<div><b>Second symptom.</b> <span class="ink2">Round-trip efficiency has fallen to ${pct(s.rte)} (typical ~90%) since ${fmtDate(rte.detected_since)}.</span></div></div>` : ""}
+      <div class="callout small"><b>Your rights.</b> Under the Australian Consumer Law a battery must be of acceptable quality, including durable, in addition to the manufacturer's warranty. Your installer is your first point of contact.</div>
+      <button class="btn primary" id="go-pack">Generate warranty &amp; ACL evidence pack</button>
+      <p class="small muted" style="margin:0">Facts and figures come from the data; the AI layer only writes the summary paragraph (${esc(DATA.packs.owner.narrator)} in this build).</p>
+    </div></div>`;
+  sohChart($("#ch-alert"), s.id, 220);
+  $("#go-pack").onclick = () => { state.step = 3; renderOwner(); };
+}
+function renderPack(body) {
+  const canShare = state.consent.installer_share;
+  body.innerHTML = `<div class="no-print" style="display:flex;gap:10px;justify-content:center;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn primary" id="pack-print">Print / save as PDF</button>
+      <button class="btn" id="pack-send" ${canShare ? "" : "disabled title='Installer sharing is off'"}>Send to ${esc(installerName[hero.installer])}</button>
+      <button class="btn" id="pack-cert">${state.consent.certificate ? "See the insurer's certificate" : `Grant certificate sharing with ${esc(hero.recipient)}`}</button></div>
+    <div class="paper">${DATA.packs.owner.html}</div>`;
+  $("#pack-print").onclick = () => {
+    const view = $("#view-owner"), note = "Open the HTML file locally to print";
+    try { view.classList.add("print-target"); window.print(); if (window.self !== window.top) toast(note); } // sandboxed previews block print silently
+    catch { toast(note); } finally { view.classList.remove("print-target"); }
+  };
+  $("#pack-send").onclick = () => toast(`Demo only: pack ${DATA.packs.owner.id} is ready to share with ${installerName[hero.installer]}; nothing was sent`);
+  $("#pack-cert").onclick = () => {
+    if (!state.consent.certificate) { state.consent.certificate = true; toast(`Granted: certificate for ${hero.recipient} only`); renderOwner(); return; }
+    show("insurer"); verifyCert(DATA.certificates.find(c => c.site_id === hero.id).certificate_id);
+  };
+}
+
+/* ---------- INSTALLER ---------- */
+function installerSites() {
+  return DATA.fleet.filter(f => f.installer_id === state.installer && (f.site_id !== hero.id || (state.consent.installer_share && state.consent.monitoring)))
+    .map(f => ({...byId[f.site_id], ...f})).sort((a, b) => a.priority.localeCompare(b.priority) || b.priority_score - a.priority_score);
+}
+const FILTERS = [["all", "All"], ["P1", "P1 · act now"], ["P2", "P2 · this week"], ["offline", "Offline"], ["battery", "Battery"], ["generation", "Solar"], ["compliance", "Compliance"]];
+function matches(site, filter) {
+  if (filter === "all") return true;
+  if (filter === "P1" || filter === "P2") return site.priority === filter;
+  if (filter === "offline") return site.offline >= 3;
+  return (faultsBySite[site.id] || []).some(f => catalog[f.fault_code].category === filter);
+}
+function renderInstaller() {
+  const sel = $("#inst-select");
+  if (!sel.options.length) {
+    sel.innerHTML = DATA.installers.map(i => `<option value="${i.installer_id}">${esc(i.installer_name)} (${i.installer_state})</option>`).join("");
+    sel.onchange = () => { state.installer = sel.value; state.selected = null; state.filter = "all"; renderInstaller(); };
+  }
+  sel.value = state.installer;
+  const sites = installerSites(), shown = sites.filter(s => matches(s, state.filter));
+  const p1 = sites.filter(s => s.priority === "P1").length, p2 = sites.filter(s => s.priority === "P2").length;
+  const offline = sites.filter(s => s.offline >= 3).length;
+  const median = arr => { const a = arr.filter(v => v != null).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+  const bench = DATA.benchmarks.installers, mine = bench.find(b => b.installer_id === state.installer);
+  $("#inst-title").textContent = `${installerName[state.installer]}: fleet triage`;
+  if (!state.selected && shown.length) state.selected = shown[0].id;
+  $("#inst-body").innerHTML = `
+    <div class="grid g4">
+      <div class="card tile"><div class="label">Sites shared with you</div><div class="value num">${sites.length}</div><div class="note">${sites.filter(s => s.feed === "simulated").length} via simulated feeds</div></div>
+      <div class="card tile"><div class="label">P1 · act now</div><div class="value num" style="color:var(--critical)">${p1}</div><div class="note">Critical fault open</div></div>
+      <div class="card tile"><div class="label">P2 · schedule this week</div><div class="value num">${p2}</div><div class="note">Warnings open</div></div>
+      <div class="card tile"><div class="label">Median health score</div><div class="value num">${median(sites.map(s => s.score)) ?? "–"}</div><div class="note">${offline} sites offline 3+ days</div></div>
+    </div>
+    <div class="grid g-main" style="margin-top:16px">
+      <div class="card"><h3>Triage queue</h3><div class="sub">Priority = critical faults ×40 + warnings ×15 + half the health-score shortfall. Click a site for detail.</div>
+        <div class="filters" role="group" aria-label="Filter">${FILTERS.map(([k, l]) => `<button class="chip" aria-pressed="${state.filter === k}" data-f="${k}">${l} <span class="muted">${sites.filter(s => matches(s, k)).length}</span></button>`).join("")}</div>
+        <div class="scroll"><table class="data"><thead><tr><th>Priority</th><th>Site</th><th>System</th><th>Health</th><th>Top issue</th><th>Offline</th></tr></thead><tbody>
+        ${shown.map(s => `<tr data-site="${s.id}" aria-selected="${s.id === state.selected}" tabindex="0">
+          <td>${s.priority === "P1" ? '<span class="pill critical">P1</span>' : s.priority === "P2" ? '<span class="pill warning">P2</span>' : '<span class="pill neutral">P3</span>'}</td>
+          <td><b>${esc(s.owner)}</b><div class="small muted">${esc(s.suburb)} ${esc(s.state)} · ${s.id}${s.id === hero.id ? " · demo owner" : ""}</div></td>
+          <td>${esc(s.brand)}<div class="small muted" style="white-space:nowrap">${s.feed === "owner_oauth" ? "Owner OAuth" : "Simulated feed"}</div></td>
+          <td class="num"><span class="minibar"><i style="width:${s.score}%;background:${gradeColor(s.score)}"></i></span>${s.score}</td>
+          <td>${s.top_fault_title ? esc(s.top_fault_title) : '<span class="muted">None</span>'}</td>
+          <td class="num">${s.offline >= 1 ? s.offline + " d" : "–"}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">No sites match.</td></tr>`}
+        </tbody></table></div>
+      </div>
+      <div class="stack" id="inst-detail"></div>
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>Peer benchmark: median health score <span class="pill neutral">Illustrative</span></h3><div class="sub">De-identified, benchmark-consented sites only; installers under 5 sites are suppressed (k-anonymity)</div>
+        ${hbars(bench.map(b => ({label: b.installer_name, value: b.median_health_score, me: b.installer_id === state.installer, dim: b.installer_id !== state.installer, suppressed: b.suppressed, title: `${b.sites} consented sites`})), {fmt: v => v == null ? "–" : v.toFixed(0), max: 100})}</div>
+      <div class="card"><h3>Peer benchmark: install-quality fault rate <span class="pill neutral">Illustrative</span></h3><div class="sub">Share of sites with string, shading or oversizing findings. Lower is better</div>
+        ${hbars(bench.map(b => ({label: b.installer_name, value: b.install_fault_rate, me: b.installer_id === state.installer, dim: b.installer_id !== state.installer, suppressed: b.suppressed})), {fmt: v => pct(v, 0)})}
+        ${mine && !mine.suppressed ? `<p class="small ink2" style="margin:12px 0 0">Your fault rate is ${pct(mine.install_fault_rate, 0)} across ${mine.sites} benchmark-consented sites. Fixing the open string and shading findings is the fastest way to move up.</p>` : ""}</div>
+    </div>`;
+  $$(".filters button", $("#inst-body")).forEach(b => b.onclick = () => { state.filter = b.dataset.f; state.selected = null; renderInstaller(); });
+  $$("tbody tr[data-site]", $("#inst-body")).forEach(tr => { const go = () => { state.selected = tr.dataset.site; $$("tbody tr", $("#inst-body")).forEach(r => r.setAttribute("aria-selected", r === tr)); renderSiteDetail(); }; tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter") go(); }; });
+  renderSiteDetail();
+}
+function renderSiteDetail() {
+  const el = $("#inst-detail"); const s = byId[state.selected];
+  if (!s) { el.innerHTML = `<div class="card muted">Select a site.</div>`; return; }
+  const faults = faultsBySite[s.id] || [], comm = commBySite[s.id];
+  el.innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:12px"><div><h3>${esc(s.owner)} · ${esc(s.suburb)}</h3><div class="sub">${esc(s.brand)} ${esc(s.model)} ×${s.units} · ${s.pv} kWp / ${s.inv} kW · installed ${fmtDate(s.installed)}</div></div><div style="text-align:right"><b class="num" style="font-size:22px">${s.score}</b><div class="small muted">grade ${s.grade}</div></div></div>
+      <div class="stack">${faults.map(f => `<div class="alert ${f.severity}">${ICON[f.severity]}<div class="body"><b>${esc(catalog[f.fault_code].title)}</b> ${sevPill(f.severity)}<p><b>Action:</b> ${esc(catalog[f.fault_code].installer_action)}</p></div></div>`).join("") || `<div class="alert info">${ICON.good}<div class="body"><b>No open faults</b></div></div>`}</div>
+      <div style="margin-top:14px" id="det-gen"></div>
+      <div style="margin-top:6px" id="det-soh"></div></div>
+    <div class="card"><h3>Commissioning proof</h3><div class="sub">First 30 days after handover: evidence the install met spec (for CER inspections and disputes)</div>
+      ${comm ? `<div class="check">${comm.array_sizing_compliant ? ICON.good : ICON.bad}<div>Array sizing: DC:AC ${comm.dc_ac_ratio.toFixed(2)} ${comm.array_sizing_compliant ? "within" : "exceeds"} the 1.33 CEC guideline</div></div>
+        <div class="check">${comm.perf_ratio_first30 >= 0.85 ? ICON.good : ICON.bad}<div>Solar output ${pct(comm.perf_ratio_first30, 0)} of weather-expected in first 30 days</div></div>
+        <div class="check">${comm.soh_first30 == null ? ICON.info : comm.soh_first30 >= 0.95 ? ICON.good : ICON.bad}<div>Battery capacity at handover ${comm.soh_first30 == null ? "not yet estimable" : pct(comm.soh_first30) + " of rated"}</div></div>
+        <div class="check">${comm.uptime_first30 >= 0.9 ? ICON.good : ICON.bad}<div>Monitoring uptime ${pct(comm.uptime_first30, 0)} (${comm.days_reporting} of 30 days)</div></div>
+        <button class="btn sm" style="margin-top:8px" onclick="toast('Demo only: commissioning proof for ${s.id} would be attached to the job file')">Attach to job file</button>`
+      : `<p class="muted small">Site connected more than 14 days after installation, so no commissioning window was captured. Invite owners at handover to get this proof automatically.</p>`}</div>`;
+  generationChart($("#det-gen"), s.id, 520); sohChart($("#det-soh"), s.id, 220, 520);
+}
+
+/* ---------- INSURER ---------- */
+let presented = null;
+function renderInsurer() {
+  const brands = DATA.benchmarks.brands.filter(b => !b.suppressed); // pseudonymised by the backend when synthetic
+  const certs = DATA.certificates;
+  const heroCert = certs.find(c => c.site_id === hero.id);
+  $("#ins-body").innerHTML = `
+    <div class="grid g-main">
+      <div class="card"><h3>Certificate lookup</h3><div class="sub">Paste an ID, or pick one of the ${certs.length} certificates owners have shared in this demo</div>
+        <form id="cert-form" style="display:flex;gap:8px"><input id="cert-id" class="btn" style="flex:1;text-align:left;font-family:ui-monospace,monospace;cursor:text" placeholder="SLC-XXXX-XXXX-XXXX" aria-label="Certificate ID" value="${esc(heroCert.certificate_id)}"><button class="btn primary">Verify</button></form>
+        <div class="filters" style="margin-top:10px">${certs.slice(0, 8).map(c => `<button class="chip" data-cert="${c.certificate_id}">${c.certificate_id} · ${esc(c.payload.brand)} · ${c.payload.health_grade}</button>`).join("")}</div>
+        <div id="cert-result"></div></div>
+      <div class="stack">
+        <div class="card"><h3>What the certificate tells you</h3><div class="kv" style="margin-top:8px">
+          <dt>State of health</dt><dd>Measured usable capacity as % of rated, with the warranty curve for its age</dd>
+          <dt>Fade rate</dt><dd>Annualised trend over the last 12 months</dd>
+          <dt>Open faults</dt><dd>Rule-based findings with published thresholds</dd>
+          <dt>Brand percentile</dt><dd>Rank within same-brand consented sites (k ≥ 5)</dd>
+          <dt>Meter corroborated</dt><dd>Inverter data cross-checked with the retailer's smart meter (CDR)</dd></div></div>
+        <div class="card"><h3>Underwriter summary</h3><div class="sub">AI-written summary paragraph over data-derived facts</div>
+          <button class="btn sm" id="ins-pack-btn">Open certificate summary for ${esc(heroCert.certificate_id)}</button></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>Portfolio risk by brand: share below warranty curve</h3><div class="sub">Sites more than 3 points under the warranty capacity line (benchmark-consented sites, k ≥ 5). Synthetic, brands masked</div>
+        ${hbars(brands.map(b => ({label: `${b.brand} (${b.sites})`, value: b.below_warranty_rate})), {fmt: v => pct(v, 0)})}</div>
+      <div class="card"><h3>Median capacity fade per year</h3><div class="sub">Warranty-linear fade is 3.0% a year; brands with at least 120 days of data per site</div>
+        ${hbars(brands.map(b => ({label: `${b.brand} (${b.sites})`, value: b.median_fade_per_year == null ? null : Math.abs(b.median_fade_per_year)})).filter(r => r.value != null), {fmt: v => (v * 100).toFixed(1) + "%/yr", max: 0.03})}
+        <p class="small muted" style="margin:12px 0 0">Bars are scaled to the 3%/yr warranty allowance. Brand names are masked because the data is synthetic; with real data the portfolio view names brands and models.</p></div>
+    </div>`;
+  $("#cert-form").onsubmit = e => { e.preventDefault(); verifyCert($("#cert-id").value.trim()); };
+  $$("[data-cert]", $("#ins-body")).forEach(b => b.onclick = () => { $("#cert-id").value = b.dataset.cert; verifyCert(b.dataset.cert); });
+  $("#ins-pack-btn").onclick = () => { $("#cert-result").innerHTML = `<div class="paper" style="margin-top:16px;padding:28px 32px">${DATA.packs.insurer.html}</div>`; };
+  verifyCert(heroCert.certificate_id);
+}
+function verifyCert(id, tampered) {
+  $("#cert-id") && ($("#cert-id").value = id);
+  const out = $("#cert-result"); const rec = DATA.certificates.find(c => c.certificate_id === id.toUpperCase());
+  if (!rec) { out.innerHTML = `<div class="alert critical" style="margin-top:16px">${ICON.critical}<div class="body"><b>Not found</b><p>No certificate with ID ${esc(id)} exists in the SunLedger registry.</p></div></div>`; return; }
+  presented = tampered || rec.payload;
+  const hash = sha256(canonical(presented)), idOk = certIdFromHash(hash) === rec.certificate_id, regOk = hash === rec.content_hash;
+  const consentOk = rec.site_id !== hero.id || (state.consent.certificate && state.consent.monitoring); // owner's live consent
+  const revoked = rec.revoked || !consentOk, expired = rec.valid_until < DATA.meta.as_of;
+  const ok = idOk && regOk && !expired && !revoked, p = presented;
+  const title = ok ? "Valid certificate" : tampered ? "Tampered: contents do not match the certificate ID"
+    : revoked ? "Revoked: the owner's certificate consent is not active" : "Expired";
+  const row = (k, v) => `<dt>${k}</dt><dd>${v}</dd>`, chk = pass => pass ? "<b>Pass</b>" : "<b>Fail</b>";
+  out.innerHTML = `<div class="alert ${ok ? "info" : "critical"}" style="margin-top:16px">${ok ? ICON.good : ICON.critical}<div class="body"><b>${title}</b>
+      <p>${chk(idOk)} ID matches SHA-256 of contents · ${chk(regOk)} hash matches registry · ${chk(!expired)} valid until ${fmtDate(rec.valid_until)} · ${chk(!revoked)} not revoked, consent active</p>
+      ${ok ? `<p class="small" style="font-family:ui-monospace,monospace;word-break:break-all">sha256 ${hash}</p>` : ""}</div></div>
+    ${ok ? `<p class="small muted" style="margin:10px 0 0">Shown as the named recipient (${esc(rec.issued_to)}). Anyone else sees the status only.</p>
+    <div class="grid g2" style="margin-top:10px"><dl class="kv">
+      ${row("Battery", `${esc(p.brand)} ${esc(p.battery_model)} (${esc(p.nameplate_usable_kwh)} kWh)`)}
+      ${row("Location", `${esc(p.postcode)} ${esc(p.state)}`)}
+      ${row("Installed", fmtDate(p.install_date))}
+      ${row("Data as of", `${fmtDate(p.data_as_of)} · ${p.days_of_data} days`)}
+      ${row("Issued to", esc(p.issued_to))}</dl>
+      <dl class="kv">
+      ${row("State of health", `<b>${pct(+p.state_of_health)}</b> vs ${pct(+p.warranty_curve_soh)} curve (${pts(+p.soh_margin)})`)}
+      ${row("Capacity method", p.capacity_method === "oem_reported" ? "Reported by the battery" : "Estimated (assumed ±3 pts, unvalidated)")}
+      ${row("Fade per year", p.fade_per_year == null ? "–" : (Math.abs(+p.fade_per_year) * 100).toFixed(1) + "%")}
+      ${row("Efficiency", pct(+p.round_trip_efficiency))}
+      ${row("Health", `${p.health_score}/100, grade <b>${esc(p.health_grade)}</b>`)}
+      ${row("Open faults", p.open_faults.length ? p.open_faults.map(c => esc(catalog[c].title)).join("; ") : "None")}
+      ${row("Brand percentile", p.brand_percentile == null ? "Cohort too small" : `${Math.round(+p.brand_percentile * 100)}th among consented peers`)}
+      ${row("Meter corroborated", p.meter_corroborated == null ? "No CDR data" : p.meter_corroborated ? "Yes" : "No")}</dl></div>`
+    : tampered ? `<p class="ink2" style="margin:10px 0 0">The presented copy claims a state of health of ${pct(+p.state_of_health)}; its fingerprint no longer matches the ID, so it is rejected and no contents are shown.</p>`
+    : `<p class="ink2" style="margin:10px 0 0">No certificate contents are shown for a revoked or expired certificate.</p>`}
+    <div style="display:flex;gap:8px;margin-top:12px">${tampered ? `<button class="btn sm" id="restore">Restore original</button>`
+      : ok ? `<button class="btn sm" id="tamper">Tamper test: edit state of health to 95%</button>${rec.site_id === hero.id ? `<button class="btn sm" id="revoke">Owner revokes consent (demo)</button>` : ""}`
+      : rec.site_id === hero.id && !consentOk ? `<button class="btn sm" id="regrant">Owner grants certificate sharing (demo)</button>` : ""}</div>`;
+  const on = (sel, fn) => { const b = $(sel); if (b) b.onclick = fn; };
+  on("#tamper", () => verifyCert(rec.certificate_id, {...rec.payload, state_of_health: "0.950", soh_margin: "-0.012"}));
+  on("#restore", () => verifyCert(rec.certificate_id));
+  on("#revoke", () => { state.consent.certificate = false; toast("Owner withdrew certificate consent: certificate revoked"); verifyCert(rec.certificate_id); });
+  on("#regrant", () => { state.consent.certificate = true; state.consent.monitoring = true; toast(`Owner granted sharing: certificate re-issued to ${rec.issued_to}`); verifyCert(rec.certificate_id); });
+}
+
+/* ---------- HOW IT WORKS ---------- */
+function renderHow() {
+  const counts = DATA.meta.access_mix;
+  const cdr = DATA.sites.filter(s => s.consent.cdr_meter).length;
+  const box = (x, y, w, h, title, sub, fill = "#fff", stroke = "#cdd5d2", ink = "#0f1c1b") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="9" fill="${fill}" stroke="${stroke}"/><text x="${x + 12}" y="${y + 20}" font-size="13" font-weight="650" fill="${ink}">${title}</text>${sub ? `<text x="${x + 12}" y="${y + 37}" font-size="11" fill="#4b5a58">${sub}</text>` : ""}`;
+  const arrow = (x1, y1, x2, y2) => `<path d="M${x1},${y1} C${(x1 + x2) / 2},${y1} ${(x1 + x2) / 2},${y2} ${x2},${y2}" fill="none" stroke="#7d8a88" stroke-width="1.5" marker-end="url(#ah)"/>`;
+  const srcs = [["SolarEdge Monitoring API", "Owner OAuth"], ["Enphase API v4", "Owner OAuth"], ["Tesla Fleet API (energy)", "Owner OAuth, read-only scope"], ["SMA Monitoring API", "Owner OAuth"], ["Sungrow iSolarCloud · Alpha ESS Open API", "Official developer APIs, not owner OAuth (simulated)"], ["Sigenergy · Fronius", "Partner or contract access (simulated)"], ["Energy CDR (smart meter)", "Via CDR representative"]];
+  const layers = [["Consent ledger", "per-purpose grant / revoke events"], ["Source adapters", "plan · fetch · land verbatim JSON"], ["dbt staging", "parse each API's shape"], ["dbt intermediate", "canonical daily model, SoH, RTE"], ["dbt marts", "health, faults, fleet, benchmarks"], ["Evidence & certificates", "AI narrative over data facts · SHA-256 IDs"]];
+  const outs = [["Owners (free)", "Alerts, health score, claim packs"], ["Installers", "Fleet triage, commissioning proof"], ["Insurers & lenders", "Verifiable health certificates"], ["Benchmarks", "k ≥ 5, benchmark consent only"]];
+  let svg = `<svg viewBox="0 0 1200 480" role="img" aria-label="Architecture: sources to SunLedger to buyers"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#7d8a88"/></marker></defs>`;
+  svg += `<text x="20" y="22" font-size="12" font-weight="700" fill="#0f5f56" letter-spacing=".06em">CONSENTED SOURCES</text><text x="455" y="22" font-size="12" font-weight="700" fill="#0f5f56" letter-spacing=".06em">SUNLEDGER (READ-ONLY)</text><text x="900" y="22" font-size="12" font-weight="700" fill="#0f5f56" letter-spacing=".06em">DERIVED OUTPUTS → BUYERS</text>`;
+  srcs.forEach(([t, s], i) => { const y = 38 + i * 61, sim = i === 4 || i === 5; svg += box(20, y, 330, 52, t, s, sim ? "#f9faf8" : "#fff"); svg += arrow(350, y + 26, 455, 90 + Math.min(i, 5) * 60); });
+  svg += `<rect x="440" y="38" width="350" height="422" rx="14" fill="#e7f2ef" stroke="#0f5f56" stroke-opacity=".35"/>`;
+  layers.forEach(([t, s], i) => { svg += box(455, 62 + i * 64, 320, 50, t, s, "#fff", "#9fc6be"); if (i) svg += `<path d="M615,${62 + i * 64 - 14} v12" stroke="#0f5f56" stroke-width="1.5" marker-end="url(#ah)"/>`; });
+  outs.forEach(([t, s], i) => { svg += box(900, 62 + i * 100, 280, 56, t, s); svg += arrow(790, 250, 900, 90 + i * 100); });
+  svg += `</svg>`;
+  const nodes = [["More connected sites", "free alerts and claim packs", "pull owners in"], ["Better benchmarks", "brand × age × installer", "cohorts, k ≥ 5"],
+    ["Sharper certificates", "percentile vs consented peers,", "meter-corroborated"], ["Buyers pay", "installers per site,", "insurers per certificate"],
+    ["Buyers push owners to connect", "premium credits, faster loans,", "installer handover invites"]];
+  const cx = 340, cy = 222, RX = 225, RY = 160, pos = t => [cx + RX * Math.cos(t), cy + RY * Math.sin(t)];
+  let fly = `<svg viewBox="0 0 680 450" role="img" aria-label="Data flywheel"><defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#0f5f56"/></marker></defs><ellipse cx="${cx}" cy="${cy}" rx="${RX}" ry="${RY}" fill="none" stroke="#9fc6be" stroke-width="2" stroke-dasharray="4 6"/>`;
+  nodes.forEach((n, i) => { // clockwise arrow between consecutive nodes, then the node card
+    const a = -Math.PI / 2 + i * 2 * Math.PI / nodes.length, mid = a + Math.PI / nodes.length;
+    const [p1, p2] = [pos(mid - 0.06), pos(mid + 0.06)];
+    fly += `<path d="M${p1[0]},${p1[1]} L${p2[0]},${p2[1]}" stroke="#0f5f56" stroke-width="2" marker-end="url(#ah2)"/>`;
+    const [x, y] = pos(a);
+    fly += `<rect x="${x - 100}" y="${y - 33}" width="200" height="66" rx="10" fill="#fff" stroke="#0f5f56" stroke-opacity=".5"/><text x="${x}" y="${y - 11}" text-anchor="middle" font-size="12.5" font-weight="650" fill="#0f1c1b">${n[0]}</text><text x="${x}" y="${y + 7}" text-anchor="middle" font-size="10.5" fill="#4b5a58">${n[1]}</text><text x="${x}" y="${y + 21}" text-anchor="middle" font-size="10.5" fill="#4b5a58">${n[2]}</text>`; });
+  fly += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="15" font-weight="700" fill="#0f5f56">Data flywheel</text><text x="${cx}" y="${cy + 15}" text-anchor="middle" font-size="11" fill="#4b5a58">each turn makes the record</text><text x="${cx}" y="${cy + 30}" text-anchor="middle" font-size="11" fill="#4b5a58">more valuable to the next buyer</text></svg>`;
+  $("#how-body").innerHTML = `<div class="card diagram">${svg}</div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card diagram"><h3>The flywheel</h3>${fly}</div>
+      <div class="stack">
+        <div class="card"><h3>Consent ≠ resale</h3><div class="sub">API terms restrict onward sharing. For example, the Tesla Fleet API Agreement §5.6.7 bars making user data available to any third party other than to users in the application, without a valid legal basis. SunLedger shares only at the owner's direction.</div>
+          <div class="grid g2"><div><b class="small">We sell (derived, owner-directed)</b><ul class="small ink2"><li>Health certificates to a named recipient</li><li>Evidence packs the owner sends</li><li>Fleet monitoring for the installer of record</li><li>Benchmarks from separately-consented sites, k ≥ 5</li></ul></div>
+          <div><b class="small">We never sell</b><ul class="small ink2"><li>Raw telemetry or API payloads</li><li>Site-level data to third parties</li><li>Control of the battery (no command scopes)</li><li>Data from sites that revoked consent</li></ul></div></div></div>
+        <div class="card"><h3>This demo build</h3><dl class="kv" style="margin-top:6px">
+          <dt>Sites</dt><dd>${DATA.sites.length} synthetic homes in VIC, NSW, QLD and SA · ${DATA.installers.length} fictional installers</dd>
+          <dt>Access mix</dt><dd>${counts.owner_oauth || 0} owner OAuth · ${counts.developer_portal || 0} developer API (simulated) · ${counts.partner_gated || 0} partner-gated (simulated) · ${cdr} with CDR meter data</dd>
+          <dt>Pipeline</dt><dd>Seeded generator → API-shaped fixtures → adapters → DuckDB raw → dbt (staging → intermediate → marts)</dd>
+          <dt>Faults injected</dt><dd>String faults, winter shading, clipping, capacity fade, efficiency loss, outages</dd>
+          <dt>Data as of</dt><dd>${fmtDate(DATA.meta.as_of)} · built ${esc(DATA.meta.built_at.slice(0, 10))} · seed ${DATA.meta.seed}</dd></dl></div>
+      </div></div>`;
+}
+
+/* ---------- WHY ---------- */
+function renderWhy() {
+  const yes = '<span class="yes">Yes</span>', no = '<span class="no">–</span>', part = t => `<span class="part">${t}</span>`;
+  $("#why-body").innerHTML = `
+    <div class="grid g4">
+      <div class="card tile"><div class="label">Batteries under the Cheaper Home Batteries Program</div><div class="value">500k+</div><div class="note">since July 2025</div></div>
+      <div class="card tile"><div class="label">Consumer reports about household batteries & new-energy services</div><div class="value">+107%</div><div class="note">ACCC, 12 months to July 2026</div></div>
+      <div class="card tile"><div class="label">Battery inspections by the regulator</div><div class="value">~1,000</div><div class="note">Reported by the Clean Energy Regulator, Feb 2026</div></div>
+      <div class="card tile"><div class="label">Battery owners in a VPP (NEM)</div><div class="value">~24%</div><div class="note">ACCC estimate; ECA survey (Jul 2026): 4–10%</div></div>
+    </div>
+    <div class="grid g3" style="margin-top:16px">
+      <div class="card"><div class="kicker">Owners · free</div><h3 style="margin:6px 0 10px">Proof, not a phone app</h3><ul class="ink2">
+        <li>Independent of retailer and manufacturer; read-only, never touches settings</li><li>Capacity vs warranty curve, explained in plain English</li><li>One-click warranty and Australian Consumer Law evidence pack</li><li>Works across brands; corroborated by your smart meter</li></ul></div>
+      <div class="card"><div class="kicker">Installers · A$1–3 / site / month (hypothesis)</div><h3 style="margin:6px 0 10px">Fewer callbacks, provable quality</h3><ul class="ink2">
+        <li>One triage queue across every OEM portal</li><li>Find faults before the customer calls; send the right tech</li><li>Commissioning proof for CER inspections and disputes</li><li>Peer benchmark as a sales asset for rebate jobs</li></ul></div>
+      <div class="card"><div class="kicker">Insurers & green lenders · A$20–50 / certificate (hypothesis)</div><h3 style="margin:6px 0 10px">Price an asset you can't see today</h3><ul class="ink2">
+        <li>Verifiable, owner-consented condition record</li><li>State of health vs warranty, fade trend, open faults</li><li>Brand and age cohorts from consented peers</li><li>Integrity-checked IDs (hash), signing planned; audit trail of consent</li></ul></div>
+    </div>
+    <div class="card" style="margin-top:16px"><h3>Where SunLedger fits</h3><div class="sub">Based on public positioning of each category; incumbents do their core job well. SunLedger fills the independent-record gap</div>
+      <table class="data cmp"><thead><tr><th>Capability</th><th>SunLedger</th><th>OEM apps</th><th>Solar Analytics</th><th>Amber / optimisers</th></tr></thead><tbody>
+        <tr><td>Independent of retailer and manufacturer</td><td>${yes}</td><td>${no}</td><td>${part("owned by device maker Catch Power")}</td><td>${part("retailer")}</td></tr>
+        <tr><td>Works across battery brands</td><td>${yes}</td><td>${no}</td><td>${yes}</td><td>${part("supported list")}</td></tr>
+        <tr><td>Battery capacity vs warranty curve</td><td>${yes}</td><td>${no}</td><td>${no}</td><td>${no}</td></tr>
+        <tr><td>Warranty / ACL evidence pack</td><td>${yes}</td><td>${no}</td><td>${no}</td><td>${no}</td></tr>
+        <tr><td>Verifiable certificate for insurers & lenders</td><td>${yes}</td><td>${no}</td><td>${no}</td><td>${no}</td></tr>
+        <tr><td>Solar fault detection</td><td>${yes}</td><td>${part("own hardware")}</td><td>${yes}</td><td>${no}</td></tr>
+        <tr><td>Needs control of the battery</td><td>${no}</td><td>–</td><td>${no}</td><td>${part("yes, to optimise")}</td></tr>
+        <tr><td>Extra hardware</td><td>${no}</td><td>${no}</td><td>${part("not for inverter plan")}</td><td>${no}</td></tr>
+      </tbody></table></div>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h3>First customer and pilot</h3><p class="ink2">A mid-size Victorian installer doing rebate jobs: owners are invited to connect at handover, installer-branded. Twelve-week pilot targets: ≥40% owner connect rate, ≥60% of callbacks caught early, ≥70% triage precision, a signed LOI at A$2/site/month, and one insurer or lender verifying 50+ certificates.</p></div>
+      <div class="card"><h3>What is real, what is simulated</h3><p class="ink2">Payload shapes follow public API docs (SolarEdge, Enphase API v4, Tesla Fleet, CDS Energy). Homes, faults, weather, installers and insurers are synthetic. Battery brands and models are fictional. Developer-API and partner-gated sources are simulated as if access were in place, and no site is linked to a real platform. Benchmarks and percentages illustrate the method only.</p></div>
+    </div>`;
+}
+
+/* ---------- navigation ---------- */
+const RENDER = {owner: renderOwner, installer: renderInstaller, insurer: renderInsurer, how: renderHow, why: renderWhy};
+const rendered = new Set();
+function show(view) {
+  state.view = view;
+  $$("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.view === view));
+  $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
+  if (view === "owner" || view === "installer" || !rendered.has(view)) { RENDER[view](); rendered.add(view); }
+  window.scrollTo({top: 0});
+}
+$$("nav.tabs button").forEach(b => b.onclick = () => show(b.dataset.view));
+$$("#owner-steps button").forEach(b => b.onclick = () => { state.step = +b.dataset.step; renderOwner(); });
+$("#asof-badge").textContent = `Synthetic demo data · as of ${fmtDate(DATA.meta.as_of)}`;
+$("#footer-text").innerHTML = `SunLedger investor & customer demo. All homes, owners, installers and insurers are fictional and all data is synthetic (seed ${DATA.meta.seed}). Battery brands and models are fictional; manufacturer names appear only as API integrations, and no figure here is a statement about any manufacturer's products. Evidence packs are not legal advice.`;
+show("owner");
+</script>
+</body>
+</html>

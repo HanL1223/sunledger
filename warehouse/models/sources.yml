@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Landed API payloads (verbatim JSON) and reference data.
+    schema: raw
+    tables:
+      - name: api_payloads
+        description: One row per API response; parsed by source-specific staging models.
+      - name: sites
+        description: Onboarding record confirmed by owner and installer.
+      - name: installers
+      - name: connections
+        description: OAuth / CDR connections per site.
+      - name: weather_daily
+        description: Daily plane-of-array irradiance per postcode (synthetic BOM stand-in).
+  - name: app
+    description: Operational tables written by the SunLedger service.
+    schema: app
+    tables:
+      - name: consent_events
+        description: Append-only consent ledger (grant / revoke per purpose).
+      - name: certificates
