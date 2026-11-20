@@ -203,7 +203,7 @@ Download [`demo/index.html`](demo/index.html) (GitHub shows its source, not the 
 
 | | |
 |---|---|
-| **1. Connect and consent.** The owner picks the platform their system reports to (any owner-OAuth platform continues the demo) and grants each purpose separately. Gated platforms explain the CDR fallback. ![Connect and consent](docs/images/01-owner-connect.png) | **2. Health dashboard.** An explainable 0 to 100 score, capacity against the warranty curve and generation against a weather model. ![Health dashboard](docs/images/02-owner-dashboard.png) |
+| **1. Connect and consent.** After picking the platform their system reports to (any owner-OAuth platform continues the demo; gated platforms explain the CDR fallback), the owner grants each purpose separately. ![Connect and consent](docs/images/01-owner-connect.png) | **2. Health dashboard.** An explainable 0 to 100 score and capacity against the warranty curve; generation against a weather model is one click away. ![Health dashboard](docs/images/02-owner-dashboard.png) |
 | **3. Installer triage.** Every shared site ranked by what needs a truck first, with commissioning proof per job. ![Installer fleet triage](docs/images/03-installer-fleet.png) | **4. Certificate verification.** The insurer checks the ID against the SHA-256 of the contents. A tamper test and an owner revocation are one click each. ![Certificate verification](docs/images/04-insurer-verify.png) |
 | **5. How it works.** Consented sources, the pipeline and the buyers, with the live access mix of this build. ![How it works](docs/images/05-how-it-works.png) | |
 
@@ -398,6 +398,8 @@ warehouse/                     dbt project: staging, intermediate, marts, seeds,
 ## License
 
 Proprietary. Copyright (c) 2026 Han Li. All rights reserved. See [LICENSE](LICENSE).
+
+The demo's visual style and its embedded Kevin Sans font come from Looseleaf by Kevin T. Ngo (MIT License); see [NOTICE](NOTICE).
 
 ## Sources
 
