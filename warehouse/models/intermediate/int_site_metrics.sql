@@ -66,6 +66,8 @@ battery as (
         median(b.soh) filter (where b.reading_date > l.last_soh_date - 45) as soh_now,
         regr_slope(b.soh, b.age_years) filter (where b.reading_date > {{ as_of }} - 365) as soh_slope_per_year,
         count(b.soh) filter (where b.reading_date > {{ as_of }} - 365) as soh_points_365,
+        median(b.soh) filter (where b.age_years <= 60 / 365.25) as soh_handover,
+        count(b.soh) filter (where b.age_years <= 60 / 365.25) as soh_points_handover,
         min(b.reading_date) filter (where b.soh is not null) as first_soh_date,
         arg_max(b.rte_30d, b.reading_date) as rte_now,
         max(b.reading_date) filter (where b.rte_30d >= 0.82) as last_healthy_rte_date,
@@ -109,6 +111,9 @@ select
         as warranty_soh_now,
     b.soh_slope_per_year,
     b.soh_points_365,
+    b.soh_handover,
+    coalesce(b.soh_handover < {{ var('min_handover_soh') }} and b.soh_points_handover >= 5, false)
+        as short_at_handover,
     b.first_soh_date,
     b.capacity_method,
     b.rte_now,

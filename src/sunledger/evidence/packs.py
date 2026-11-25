@@ -130,6 +130,8 @@ def _measured(fault: dict[str, Any], f: dict[str, Any]) -> tuple[str, str]:
         "ARRAY_OVERSIZED": (f"DC:AC ratio {v:.2f}", "above 1.33"),
         "CAPACITY_BELOW_WARRANTY": (f"{_pct(h['soh_now'])} ({method}) vs {_pct(h['warranty_soh_now'])} "
                                     "warranty curve", "3+ points below curve"),
+        "CAPACITY_SHORT_AT_HANDOVER": (f"{_pct(v)} of quoted usable capacity in the first 60 days ({method})",
+                                       "below 95%"),
         "CAPACITY_FADE_ACCELERATED": (f"losing {abs(v) * 100:.1f}% of capacity per year", "faster than 4.5%/yr"),
         "RTE_DEGRADED": (f"round-trip efficiency {_pct(v)}", "below 82% (spec ~90%)"),
     }[fault["fault_code"]]
@@ -194,6 +196,8 @@ def _request_section(f: dict[str, Any]) -> Section:
     if any(x["fault_code"] in ("CAPACITY_BELOW_WARRANTY", "RTE_DEGRADED") for x in f["faults"]):
         asks.append("Lodge a warranty claim with the battery manufacturer, attaching this pack, and confirm the "
                     "claim reference.")
+    if any(x["fault_code"] == "CAPACITY_SHORT_AT_HANDOVER" for x in f["faults"]):
+        asks.append("Check the system's configuration against the usable capacity on the quote and confirm in writing.")
     asks.append("Propose a remedy (repair or replacement) and a timeframe in writing.")
     return Section("What the owner is asking for", bullets=asks)
 
@@ -204,10 +208,13 @@ def _letter_section(f: dict[str, Any]) -> Section:
     return Section("Draft message to installer", paragraphs=[
         f"Dear {s['installer_name']},",
         f"My {s['brand']} {s['battery_model']}, installed by you on {s['install_date']} at my home in {s['suburb']}, "
-        f"is showing {issues}. Independent monitoring data shows its usable capacity at {_pct(h['soh_now'])}, "
-        f"which is below the {_pct(h['warranty_soh_now'])} the manufacturer's warranty curve allows at this age.",
-        "Please find the evidence pack attached. I would appreciate it if you could arrange an inspection and lodge "
-        "a warranty claim with the manufacturer on my behalf, and let me know the next steps within 5 business days.",
+        f"is showing {issues}. Independent monitoring data shows its usable capacity at {_pct(h['soh_now'])} "
+        + ("of the usable capacity on my quote, and it has been short since installation." if h["short_at_handover"]
+           else f"of rated, below the {_pct(h['warranty_soh_now'])} the manufacturer's warranty curve allows at this age."),
+        "Please find the evidence pack attached. I would appreciate it if you could arrange an inspection and "
+        + ("check the system against the capacity you quoted" if h["short_at_handover"]
+           else "lodge a warranty claim with the manufacturer on my behalf")
+        + ", and let me know the next steps within 5 business days.",
         "Kind regards,",
         s["owner_display_name"],
     ])

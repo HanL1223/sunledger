@@ -2,7 +2,7 @@
 
 **Independent, owner-consented health records for Australia's home batteries.** Owners connect their system for free; installers, insurers and green lenders pay for verifiable outputs derived from that record. SunLedger never sells raw data.
 
-> Status: pre-pilot concept and working demo (20 Nov 2026). All data is synthetic. Battery brands and models, homes, owners, installers and insurers in the demo are fictional. Manufacturer names appear only as real API integrations, no synthetic site is linked to a real platform, and no figure here is a statement about any manufacturer's products.
+> Status: pre-pilot concept and working demo (20 Nov 2026; market facts refreshed 25 Nov 2026). All data is synthetic. Battery brands and models, homes, owners, installers and insurers in the demo are fictional. Manufacturer names appear only as real API integrations, no synthetic site is linked to a real platform, and no figure here is a statement about any manufacturer's products.
 
 ![Owner health dashboard](docs/images/02-owner-dashboard.png)
 
@@ -12,14 +12,15 @@
 
 ## The problem
 
-Australia installed half a million home batteries in about a year, and nobody neutral holds the evidence of how they perform.
+Australia installed more than half a million home batteries in about fifteen months, and nobody neutral holds the evidence of how they perform.
 
 | Signal | Number | Source |
 |---|---|---|
-| Batteries installed under the federal Cheaper Home Batteries Program (from 1 Jul 2025) | **500,000+** by 14 Aug 2026 | [PM media release][pm-500k] |
+| Solar batteries installed since 1 Jul 2025 (Cheaper Home Batteries Program era) | **569,000+**, 16.44 GWh, by 30 Sep 2026 | [CER inspection results][cer-results] |
+| Rebate basis since 1 May 2026 | Paid per **usable kWh**, tiered: first 14 kWh at 100%, 14 to 28 kWh at 60%, 28 to 50 kWh at 15%; steps down each Jan and Jul to 2030 | [Energy Matters][tiers] |
 | Consumer reports to the ACCC about household batteries and new energy services | **+107%** in 12 months | [ACCC, 10 Jul 2026][accc] |
 | Independent dispute resolution under the New Energy Tech Consumer Code | **None** | [ACCC, 10 Jul 2026][accc] |
-| Battery installation inspections completed by the Clean Energy Regulator | **~1,000** by Feb 2026 | [CER, Feb 2026][cer] |
+| CER inspections of rebated battery installs rated substandard / unsafe | **59.7% / 0.86%** of 4,322 inspected (to 30 Sep 2026); defects are workmanship (labels, wiring, RCDs), not the batteries | [CER inspection results][cer-results] |
 | Limited fire-risk recall by a top-selling home battery brand | Nov 2025 | [RenewEconomy][recall] |
 | VPP participation among battery owners across the NEM | **~24%** (ACCC estimate); **4 to 10%** in a household survey | [Energy Consumers Australia, Jul 2026][eca] (reports both) |
 
@@ -28,15 +29,15 @@ Three people feel this, and none of them has an independent record:
 | Persona | Job to be done | Pain today |
 |---|---|---|
 | **Owner** (rebate-funded household) | "Is my battery doing what I paid for? If not, get it fixed under warranty." | The OEM app shows state of charge, not degradation against the warranty. No evidence that will stand up with the installer or manufacturer. |
-| **Installer ops manager** (mid-size installer, 40 to 150 jobs a month, hypothesis) | "Find sick systems before the customer calls; prove my installs were right." | Callbacks are reactive. Data is split across 4 to 6 OEM portals (hypothesis). No install proof for CER inspections or disputes. |
+| **Installer ops manager** (mid-size installer, 40 to 150 jobs a month, hypothesis) | "Find sick systems before the customer calls; prove my installs were right." | Callbacks are reactive. Data is split across 4 to 6 OEM portals (hypothesis). No independent performance record for disputes. |
 | **Insurer / lender (underwriter)** | "Price the battery risk on this property or loan." | Pricing an A$10k+ asset (hypothesis) blind: install date and brand, no condition data. |
 
 ## The solution
 
 A read-only, cross-brand **battery health record** built from the owner's own consented API connections:
 
-- **Owners (free):** health score, capacity vs warranty curve, plain-English alerts, and a one-click warranty and Australian Consumer Law evidence pack.
-- **Installers (paid):** one triage queue across every OEM portal, commissioning proof for each job, and de-identified peer benchmarks.
+- **Owners (free):** a handover check that the battery holds the usable capacity on the quote (the figure the price and rebate were based on), then health score, capacity vs warranty curve, plain-English alerts, and a one-click warranty and Australian Consumer Law evidence pack.
+- **Installers (paid):** one triage queue across every OEM portal, a handover performance and capacity record for each job, and de-identified peer benchmarks. This is performance evidence, not a compliance certificate: telemetry cannot see the labelling and wiring defects CER inspectors find.
 - **Insurers and lenders (paid):** a verifiable health certificate the owner shares with a named recipient; its ID is a SHA-256 fingerprint of its contents, so it is integrity-checked (hash); signing is planned.
 
 **Consent is not a licence to resell.** Platform terms restrict onward sharing: the [Tesla Fleet API Agreement][tesla-agreement] §5.6.7 bars partners from making User Personal Data available "to any third party other than to Users in the Application, without a valid legal basis". That supports an owner-directed model: SunLedger sells **derived outputs** produced for, or at the direction of, the owner, never raw telemetry.
@@ -45,8 +46,9 @@ A read-only, cross-brand **battery health record** built from the owner's own co
 
 1. **Volume:** the rebate created a large, new, warranty-bound installed base in about a year, much of it installed by businesses new to storage.
 2. **Friction:** consumer reports have more than doubled and the industry code has no independent dispute resolution, so owners need their own evidence.
-3. **Access:** the main platforms now expose official APIs (SolarEdge v2, Enphase API v4, Tesla Fleet energy endpoints, SMA, and Sungrow and Alpha ESS developer APIs), and the Energy Consumer Data Right gives an independent smart-meter cross-check.
-4. **Trust gap:** most owners keep control of their battery rather than join a VPP. A read-only product that never touches settings is an easy yes.
+3. **Capacity is money:** since 1 May 2026 the rebate is paid per usable kWh in tiers, and the price is quoted on the same figure. The first 60 days of data show whether the system holds what was quoted.
+4. **Access:** the main platforms now expose official APIs (SolarEdge v2, Enphase API v4, Tesla Fleet energy endpoints, SMA, and Sungrow and Alpha ESS developer APIs), and the Energy Consumer Data Right gives an independent smart-meter cross-check.
+5. **Trust gap:** most owners keep control of their battery rather than join a VPP. A read-only product that never touches settings is an easy yes.
 
 ## How it works
 
@@ -183,13 +185,13 @@ pie showData
 
 ## Data sources and their validity
 
-Checked 20 Nov 2026 (public sources). "Simulated" means the demo serves synthetic data in that source's place.
+Checked 25 Nov 2026 (public sources). "Simulated" means the demo serves synthetic data in that source's place.
 
 | Source | Access model | Status | In the demo | Evidence |
 |---|---|---|---|---|
-| SolarEdge Monitoring API v2 | Registered app (client ID and secret) on SolarEdge ONE for Developers, then OAuth 2.0 per site; calls consume monthly credits | V2 live; V1 retirement scheduled for 1 Nov 2026 (completion not independently confirmed) | Adapter, payload shapes modelled | [openHAB binding][se-openhab], [HA community][se-ha] |
+| SolarEdge Monitoring API v2 | Registered app (client ID and secret) on SolarEdge ONE for Developers, then OAuth 2.0 per site; calls consume monthly credits | V2 only: V1 was retired in early Nov 2026 and now returns errors | Adapter, payload shapes modelled | [openHAB binding][se-openhab], [HA community][se-ha], [V1 shutdown][se-v1] |
 | Enphase API v4 | Self-serve developer portal; system-owner authorisation; Watt plan free (1,000 hits per month), Kilowatt and Megawatt paid | Live | Adapter, payload shapes modelled | [Developer plans][en-plans], [FAQ][en-faq] |
-| Tesla Fleet API (energy) | Partner account and virtual key; read scope `energy_device_data`; `live_status`, `site_info`, `calendar_history`; §5.6.7 limits onward sharing | Live | Adapter, payload shapes modelled | [Energy endpoints][tesla], [Scopes][tesla-scopes], [Agreement][tesla-agreement] |
+| Tesla Fleet API (energy) | Partner account and virtual key; read scope `energy_device_data`; `live_status`, `site_info`, `calendar_history`; §5.6.7 limits onward sharing; pay-per-use pricing, energy data capped at 1 request per site per 5 minutes | Live | Adapter, payload shapes modelled | [Energy endpoints][tesla], [Scopes][tesla-scopes], [Agreement][tesla-agreement], [Limits][tesla-limits] |
 | SMA | OAuth code flow; client credentials set up by SMA API Developer Support (not self-serve) | Live, assisted onboarding | Adapter, set names approximated | [SMA developer FAQ][sma] |
 | Sungrow iSolarCloud | Official developer portal (developer-api.isolarcloud.com); API key or OAuth2 | Official API; app review reported by one developer, not confirmed in Sungrow docs | Simulated bridge feed | [sungrow-api-client][sg-1], [Sungrow-API][sg-2] |
 | Alpha ESS | Official Open API on the AlphaCloud developer platform; free developer registration (AppID and secret); systems bound by serial number and check code, not owner OAuth | Official API | Simulated bridge feed | [open.alphaess.com][aess], [alphaess-openAPI][aess-gh] |
@@ -299,7 +301,7 @@ If the call fails, the pack falls back to the template and records which narrato
 | Battery state of health | OEM-reported capacity where the API has it (SolarEdge `fullPackEnergyAvailable`, Tesla `total_pack_energy`); otherwise discharge / SoC swing on days with a swing of 40% or more, corrected by sqrt(RTE) |
 | Warranty curve | Linear from 100% to 70% at 10 years |
 | Round-trip efficiency | Rolling 30-day discharge / charge |
-| Faults | `OFFLINE`, `DATA_GAPS`, `STRING_UNDERPERFORMANCE`, `SEASONAL_SHADING`, `INVERTER_CLIPPING`, `ARRAY_OVERSIZED` (CEC 133%), `CAPACITY_BELOW_WARRANTY`, `CAPACITY_FADE_ACCELERATED`, `RTE_DEGRADED` |
+| Faults | `OFFLINE`, `DATA_GAPS`, `STRING_UNDERPERFORMANCE`, `SEASONAL_SHADING`, `INVERTER_CLIPPING`, `ARRAY_OVERSIZED` (CEC 133%), `CAPACITY_SHORT_AT_HANDOVER` (first-60-day capacity under 95% of quoted usable kWh; routed to the installer, not the manufacturer), `CAPACITY_BELOW_WARRANTY`, `CAPACITY_FADE_ACCELERATED`, `RTE_DEGRADED` |
 | Health score | Generation 30 + capacity 30 + efficiency 15 + availability 15 + faults 10, rescaled over components with data; grades A to E |
 | Meter reconciliation | Inverter export vs CDR smart-meter export |
 | Benchmarks | Installer and brand cohorts from `benchmark`-consented sites only, suppressed below k = 5; brands pseudonymised as Brand A to H in synthetic mode |
@@ -347,7 +349,8 @@ Add dbt freshness checks in CI, incremental `fct_site_daily`, BOM or satellite i
 |---|---|---|
 | Owners connect at handover | Friction, privacy concerns, no immediate pain | Pilot target: 40%+ of new jobs connect |
 | Installers pay A$1 to 3 per site per month | Thin margins; OEM portals are free | Signed LOI at A$2 per site per month |
-| Insurers and lenders value an owner-consented certificate | Prefer their own data; long procurement | One partner verifying 50+ certificates |
+| Insurers and lenders value an owner-consented certificate | Prefer their own data; long procurement. Insurers now ask about lithium-ion risk, but the claims growth they cite is mostly e-bikes and tools, and no condition-based home-battery pricing was found | One partner verifying 50+ certificates; treat as phase 2 after installers |
+| Performance data is read as install compliance | CER's defects are labels, wiring and RCDs, which telemetry cannot see | Sell it as performance and capacity evidence; never label it a compliance check |
 | API access holds | Partner-gated brands cover a large share of installs; developer-API terms (Sungrow, Alpha ESS) unconfirmed; terms change | CDR meter fallback; apply for Sungrow, Alpha ESS and SMA access in month one |
 | Capacity estimates are defensible | Estimated SoH uncertainty is assumed at about +/-3 points (unvalidated) without sub-daily data and temperature | Compare against OEM-reported capacity on SolarEdge and Tesla sites |
 | Consent model satisfies platform terms | Benchmarks could be read as "making data available" | Legal review of each agreement; benchmarks only from opted-in sites, k >= 5, no raw data |
@@ -406,6 +409,9 @@ The demo's visual style and its embedded Kevin Sans font come from Looseleaf by 
 - Prime Minister of Australia, [Half a million Cheaper Home Batteries bringing down bills for Australian homes and businesses][pm-500k], 14 Aug 2026.
 - ACCC, [Growing home battery uptake delivering lower electricity bills but consumer protections needed][accc], 10 Jul 2026.
 - Clean Energy Regulator, [Safety a priority as solar battery installations surge][cer], Feb 2026.
+- Clean Energy Regulator, [Solar battery inspection results][cer-results], data to 30 Sep 2026 (page updated 12 Nov 2026).
+- Energy Matters, [Battery rebate changes on 1 January 2027][tiers] (tier bands from 1 May 2026), Nov 2026.
+- Insurance Business, [Lithium battery fires push insurers into underwriting questions and pricing][ins], 11 Nov 2026.
 - RenewEconomy, [Australia's top selling home battery issues limited recall over risk of fire][recall], Nov 2025.
 - Energy Consumers Australia, [Why households adopt batteries and why many are not joining a VPP][eca], Jul 2026 (cites the ACCC NEM-wide estimate).
 - Tesla, [Fleet API Agreement][tesla-agreement] (last updated 21 Mar 2025), §5.6.7: partners may not "rent, lease, sell, sublicense (except as expressly permitted herein), assign, distribute, publish, transfer or otherwise make available the API or Content or User Personal Data to any third party other than to Users in the Application, without a valid legal basis".
@@ -414,6 +420,11 @@ The demo's visual style and its embedded Kevin Sans font come from Looseleaf by 
 [pm-500k]: https://www.pm.gov.au/media/half-million-cheaper-home-batteries-bringing-down-bills-australian-homes-and-businesses
 [accc]: https://www.accc.gov.au/media-release/growing-home-battery-uptake-delivering-lower-electricity-bills-but-consumer-protections-needed
 [cer]: https://cer.gov.au/news-and-media/media/2026/february/safety-priority-solar-battery-installations-surge
+[cer-results]: https://cer.gov.au/schemes/renewable-energy-target/small-scale-renewable-energy-scheme/small-scale-renewable-energy-systems/small-scale-renewable-energy-system-inspections/solar-battery-inspection-results-report
+[tiers]: https://www.energymatters.com.au/renewable-news/battery-rebate-1-january-2027-fake-deadline/
+[ins]: https://www.insurancebusinessmag.com/au/news/property/lithium-battery-fires-push-insurers-into-underwriting-questions-and-pricing-report-596929.aspx
+[se-v1]: https://www.smarthomeassistent.de/solaredge-api-v1-abgeschaltet-home-assistant/
+[tesla-limits]: https://developer.tesla.com/docs/fleet-api
 [recall]: https://reneweconomy.com.au/australias-top-selling-home-battery-issues-limited-recall-over-risk-of-fire/
 [eca]: https://energyconsumersaustralia.com.au/sites/default/files/2026-07/web-doc-report-survey-why-households-adopt-batteries-why-many-arent-joining-vpp.pdf
 [se-openhab]: https://next.openhab.org/addons/bindings/solaredge/

@@ -69,6 +69,7 @@ def build_fleet(seed: int, count: int, as_of: date, history_start: date) -> list
     for n in range(2, count + 1):
         sites.append(_random_site(rng, n, as_of, history_start))
     _ensure_cohorts(sites)
+    _add_handover_shortfalls(sites, random.Random(seed + 1), history_start)
     return sites
 
 
@@ -169,12 +170,19 @@ def _ensure_cohorts(sites: list[Site]) -> None:
         site.consents["benchmark"] = False
 
 
+def _add_handover_shortfalls(sites: list[Site], rng: random.Random, history_start: date) -> None:
+    """A few installs deliver less usable capacity than quoted from day one (e.g. a module left out of the stack)."""
+    for site in sites[1:]:
+        if site.install_date >= history_start and rng.random() < 0.05:
+            site.faults["handover_shortfall"] = {"ratio": rng.uniform(0.82, 0.92)}
+
+
 def soh(site: Site, day: date) -> float:
     age = (day - site.install_date).days / 365.25
     value = 1.0 - site.fade_rate * age
     if fade := site.faults.get("capacity_fade"):
         value -= fade["rate"] * max(0.0, (day - fade["start"]).days / 365.25)
-    return value
+    return value * site.faults.get("handover_shortfall", {}).get("ratio", 1.0)
 
 
 def rte(site: Site, day: date) -> float:

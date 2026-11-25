@@ -33,7 +33,12 @@ rules as (
     union all
     select site_id, 'CAPACITY_BELOW_WARRANTY', 'critical', soh_now - warranty_soh_now, -0.03,
            cast(capacity_breach_month as date)
-    from m where soh_now < warranty_soh_now - 0.03
+    from m where soh_now < warranty_soh_now - 0.03 and not short_at_handover
+
+    union all
+    select site_id, 'CAPACITY_SHORT_AT_HANDOVER', 'critical', soh_handover, {{ var('min_handover_soh') }},
+           first_soh_date
+    from m where short_at_handover
 
     union all
     select site_id, 'CAPACITY_FADE_ACCELERATED', 'warning', soh_slope_per_year, -0.045, null

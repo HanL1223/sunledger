@@ -17,6 +17,7 @@ vars:
   min_benchmark_cohort: 5         # k-anonymity floor for any published benchmark
   max_dc_ac_ratio: 1.33           # CEC guideline: array may exceed inverter rating by at most 33%
   min_soc_swing_pct: 40           # deep-cycle days used to estimate usable capacity
+  min_handover_soh: 0.95          # first-60-day capacity below this vs quoted usable kWh is an install issue
   synthetic: true                 # pseudonymise brands in benchmarks; neutral platform labels per site
 
 models:
